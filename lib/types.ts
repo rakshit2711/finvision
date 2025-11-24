@@ -1,5 +1,13 @@
 // Types for the FinVision AI application
 
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Transaction {
   id: string;
   type: 'income' | 'expense';
@@ -7,6 +15,7 @@ export interface Transaction {
   category: string;
   description: string;
   date: Date;
+  userId?: string;
 }
 
 export interface Budget {

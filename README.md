@@ -1,48 +1,56 @@
-# 💰 FinVision AI – Smart Insights, Smarter DecisionsThis is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 💰 FinVision AI – Smart Insights, Smarter Decisions
+
+An AI-powered personal finance management system with **full backend integration** that helps users make informed financial decisions through intelligent analysis, predictions, and personalized recommendations.
+
+## 🎯 Project Overview
+
+**Domain:** Web Development  
+**Guide:** Dr. Deepa Joshi  
+**Students:** Arav Kumar & Abhinav Rana (BTech CSE - Semester 7)
+
+## 📋 Abstract
+
+Managing personal finances is a challenge many individuals face. Existing finance management apps are either too basic or lack intelligent insights that truly help users understand their spending habits and make better financial decisions.
+
+**FinVision AI** bridges the gap between raw financial data and actionable insights by leveraging Artificial Intelligence to:
 
 
 
-An AI-powered personal finance management system that helps users make informed financial decisions through intelligent analysis, predictions, and personalized recommendations.## Getting Started
-
-
-
-## 🎯 Project OverviewFirst, run the development server:
-
-
-
-**Domain:** Web Development  ```bash
-
-**Guide:** Dr. Deepa Joshi  npm run dev
-
-**Students:** Arav Kumar & Abhinav Rana (BTech CSE - Semester 7)# or
-
-yarn dev
-
-## 📋 Abstract# or
-
-pnpm dev
-
-Managing personal finances is a challenge many individuals face. Existing finance management apps are either too basic or lack intelligent insights that truly help users understand their spending habits and make better financial decisions.# or
-
-bun dev
-
-**FinVision AI** bridges the gap between raw financial data and actionable insights by leveraging Artificial Intelligence to:```
-
-
-
-- ✅ Analyze spending patternsOpen [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
+- ✅ Analyze spending patterns
 - ✅ Provide budgeting recommendations
-
-- ✅ Predict future expensesYou can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
-
+- ✅ Predict future expenses
 - ✅ Offer personalized financial insights
-
-- ✅ Help users achieve their savings goalsThis project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
+- ✅ Help users achieve their savings goals
 - ✅ Reduce unnecessary expenses
+- ✅ Improve long-term financial stability
 
-- ✅ Improve long-term financial stability## Learn More
+## 🚀 New: Complete Backend Implementation
+
+This project now includes a **fully functional backend** with:
+
+- 🔐 **Secure Authentication** - JWT-based login/signup with password hashing
+- 🗄️ **PostgreSQL Database** - Prisma ORM with type-safe queries
+- 🛡️ **Protected Routes** - Middleware-based route protection
+- 📡 **RESTful API** - Complete CRUD operations for transactions and budgets
+- 👤 **User Management** - Individual user accounts with data isolation
+- 🔒 **Security** - HTTP-only cookies, encrypted passwords, secure sessions
+
+### Quick Start with Backend
+
+```bash
+# Option 1: Automated setup (Recommended)
+.\setup.ps1
+
+# Option 2: Manual setup
+npm install
+npx prisma generate
+npx prisma migrate dev --name init
+npm run dev
+```
+
+📖 **For detailed backend setup instructions, see [BACKEND_SETUP.md](./BACKEND_SETUP.md)**
+
+## Learn More
 
 
 
@@ -96,6 +104,7 @@ Existing tools only track income and expenses at a basic level without analyzing
 
 ## 🛠️ Tech Stack
 
+### Frontend
 - **Framework:** Next.js 16 (React 19)
 - **Language:** TypeScript
 - **Styling:** Tailwind CSS 4
@@ -103,39 +112,67 @@ Existing tools only track income and expenses at a basic level without analyzing
 - **Icons:** Lucide React
 - **Date Handling:** date-fns
 
+### Backend
+- **Database:** PostgreSQL
+- **ORM:** Prisma
+- **Authentication:** JWT with jose
+- **Password Hashing:** bcryptjs
+- **API:** Next.js App Router API Routes
+
 ## 🚀 Getting Started
 
 ### Prerequisites
 - Node.js 20.x or higher
+- PostgreSQL (local or cloud service like Neon/Supabase)
 - npm, yarn, pnpm, or bun
 
-### Installation
+### Quick Setup (Recommended)
 
-1. Clone the repository
+Run the automated setup script:
+
+**Windows (PowerShell):**
+```powershell
+.\setup.ps1
+```
+
+**Mac/Linux:**
+```bash
+chmod +x setup.sh
+./setup.sh
+```
+
+### Manual Installation
+
+1. **Clone the repository**
 ```bash
 git clone <repository-url>
 cd finvision-ai
 ```
 
-2. Install dependencies
+2. **Install dependencies**
 ```bash
 npm install
-# or
-yarn install
-# or
-pnpm install
 ```
 
-3. Run the development server
+3. **Setup Database**
+   - Create a PostgreSQL database
+   - Copy `.env.example` to `.env`
+   - Update `DATABASE_URL` in `.env`
+
+4. **Initialize Database**
+```bash
+npx prisma generate
+npx prisma migrate dev --name init
+```
+
+5. **Run the development server**
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
 ```
 
-4. Open [http://localhost:3000](http://localhost:3000) in your browser
+6. **Open [http://localhost:3000](http://localhost:3000)**
+   - Click "Get Started" to create an account
+   - Login and start managing your finances!
 
 ### Build for Production
 
@@ -144,21 +181,48 @@ npm run build
 npm start
 ```
 
+## 🔧 Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+DATABASE_URL="postgresql://username:password@localhost:5432/fintech_db?schema=public"
+JWT_SECRET="your-super-secret-jwt-key-change-this-in-production"
+NEXT_PUBLIC_APP_URL="http://localhost:3000"
+```
+
 ## 📁 Project Structure
 
 ```
 finvision-ai/
 ├── app/
-│   ├── page.tsx              # Main dashboard
+│   ├── page.tsx              # Landing page
 │   ├── layout.tsx            # Root layout
 │   ├── globals.css           # Global styles
+│   ├── login/                # Login page
+│   ├── signup/               # Signup page
+│   ├── dashboard/            # Protected dashboard
 │   ├── expenses/             # Expense tracking
 │   ├── insights/             # AI insights
-│   └── budget/               # Budget management
-├── components/               # Reusable components
-├── lib/                      # Utilities and types
-├── public/                   # Static assets
-└── package.json
+│   ├── budget/               # Budget management
+│   └── api/
+│       ├── auth/             # Authentication endpoints
+│       ├── transactions/     # Transaction CRUD
+│       └── budgets/          # Budget CRUD
+├── components/               # Reusable UI components
+├── lib/
+│   ├── auth.ts              # Authentication utilities
+│   ├── prisma.ts            # Database client
+│   ├── types.ts             # TypeScript types
+│   └── utils.ts             # Helper functions
+├── prisma/
+│   └── schema.prisma        # Database schema
+├── middleware.ts            # Route protection
+├── .env                     # Environment variables
+├── setup.ps1                # Windows setup script
+├── setup.sh                 # Unix setup script
+├── BACKEND_SETUP.md         # Backend documentation
+└── IMPLEMENTATION_SUMMARY.md # Complete implementation details
 ```
 
 ## 🌍 SDG Alignment
@@ -180,15 +244,36 @@ This project aligns with **UN Sustainable Development Goal 17: Partnerships for 
 - Reduced financial stress
 - Long-term financial stability
 
+## 🎯 Current Features
+
+### ✅ Implemented
+- ✅ User authentication (login/signup)
+- ✅ Secure password handling
+- ✅ Protected dashboard routes
+- ✅ Transaction management (CRUD)
+- ✅ Budget creation and tracking
+- ✅ Real-time data from database
+- ✅ User-specific data isolation
+- ✅ Responsive UI design
+
+### 🚧 Coming Soon
+- Enhanced expense management UI
+- AI-powered insights generation
+- Spending pattern visualization
+- Budget recommendations
+- Export reports (PDF/Excel)
+- Multi-currency support
+- Recurring transactions
+
 ## 📊 Future Enhancements
 
 - Integration with banking APIs
-- Multi-currency support
 - Investment tracking
 - Bill payment reminders
 - Collaborative budgets for families
 - Mobile app version
-- Export reports (PDF/Excel)
+- Advanced analytics dashboard
+- Financial goal setting
 
 ## 👥 Contributors
 
