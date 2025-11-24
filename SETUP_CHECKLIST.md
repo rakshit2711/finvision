@@ -109,7 +109,7 @@ Check your `.env` file has:
 ## ☑️ Database Verification
 
 ### Using Prisma Studio
-- [ ] Run `npx prisma studio`
+- [ ] Run `http://localhost:3000/api/auth/me`
 - [ ] Prisma Studio opens in browser (http://localhost:5555)
 - [ ] See `users`, `transactions`, and `budgets` tables
 - [ ] Can view created records
