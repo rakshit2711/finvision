@@ -20,7 +20,7 @@ const Header = () => {
 
   useEffect(() => {
     fetchUser();
-  }, []);
+  }, [pathname]);
 
   const fetchUser = async () => {
     try {
@@ -28,9 +28,12 @@ const Header = () => {
       if (res.ok) {
         const data = await res.json();
         setUser(data.user);
+      } else {
+        setUser(null);
       }
     } catch (error) {
       console.error('Failed to fetch user:', error);
+      setUser(null);
     }
   };
 
@@ -38,6 +41,7 @@ const Header = () => {
     setIsLoggingOut(true);
     try {
       await fetch('/api/auth/logout', { method: 'POST' });
+      setUser(null);
       router.push('/login');
       router.refresh();
     } catch (error) {

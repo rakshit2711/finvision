@@ -10,7 +10,7 @@ export interface User {
 
 export interface Transaction {
   id: string;
-  type: 'income' | 'expense';
+  type: 'INCOME' | 'EXPENSE';
   amount: number;
   category: string;
   description: string;

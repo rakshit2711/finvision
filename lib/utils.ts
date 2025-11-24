@@ -29,7 +29,7 @@ export function formatCurrency(amount: number): string {
 }
 
 // Calculate total by type
-export function calculateTotal(transactions: Transaction[], type: 'income' | 'expense'): number {
+export function calculateTotal(transactions: Transaction[], type: 'INCOME' | 'EXPENSE'): number {
   return transactions
     .filter(t => t.type === type)
     .reduce((sum, t) => sum + t.amount, 0);
@@ -92,7 +92,7 @@ export function generateAIInsights(
   // Check budget overages
   budgets.forEach(budget => {
     const spent = thisMonth
-      .filter(t => t.type === 'expense' && t.category === budget.category)
+      .filter(t => t.type === 'EXPENSE' && t.category === budget.category)
       .reduce((sum, t) => sum + t.amount, 0);
     
     if (spent > budget.limit) {
@@ -117,8 +117,8 @@ export function generateAIInsights(
   });
   
   // Compare with last month
-  const thisMonthTotal = calculateTotal(thisMonth, 'expense');
-  const lastMonthTotal = calculateTotal(lastMonth, 'expense');
+  const thisMonthTotal = calculateTotal(thisMonth, 'EXPENSE');
+  const lastMonthTotal = calculateTotal(lastMonth, 'EXPENSE');
   const percentChange = ((thisMonthTotal - lastMonthTotal) / lastMonthTotal) * 100;
   
   if (percentChange > 20) {
@@ -140,7 +140,7 @@ export function generateAIInsights(
   }
   
   // Find highest spending category
-  const categoryTotals = groupByCategory(thisMonth.filter(t => t.type === 'expense'));
+  const categoryTotals = groupByCategory(thisMonth.filter(t => t.type === 'EXPENSE'));
   if (categoryTotals.length > 0) {
     const highest = categoryTotals.reduce((max, cat) => 
       cat.amount > max.amount ? cat : max
@@ -166,7 +166,7 @@ export function predictFutureExpenses(transactions: Transaction[]): SpendingPatt
   
   months.forEach(month => {
     const monthTransactions = filterTransactionsByMonth(transactions, month);
-    const categories = groupByCategory(monthTransactions.filter(t => t.type === 'expense'));
+    const categories = groupByCategory(monthTransactions.filter(t => t.type === 'EXPENSE'));
     
     categories.forEach(cat => {
       if (!categoryAverages[cat.category]) {
@@ -202,20 +202,20 @@ export function generateSampleData(): {
 } {
   const transactions: Transaction[] = [
     // Current month expenses
-    { id: '1', type: 'expense', amount: 5000, category: 'Food & Dining', description: 'Groceries', date: new Date(2025, 10, 5) },
-    { id: '2', type: 'expense', amount: 2000, category: 'Transportation', description: 'Fuel', date: new Date(2025, 10, 8) },
-    { id: '3', type: 'expense', amount: 3500, category: 'Shopping', description: 'Clothing', date: new Date(2025, 10, 10) },
-    { id: '4', type: 'expense', amount: 1500, category: 'Entertainment', description: 'Movies & Dining', date: new Date(2025, 10, 12) },
-    { id: '5', type: 'expense', amount: 4000, category: 'Bills & Utilities', description: 'Electricity & Internet', date: new Date(2025, 10, 1) },
-    { id: '6', type: 'expense', amount: 2500, category: 'Healthcare', description: 'Medical checkup', date: new Date(2025, 10, 7) },
-    { id: '7', type: 'income', amount: 50000, category: 'Salary', description: 'Monthly salary', date: new Date(2025, 10, 1) },
-    { id: '8', type: 'income', amount: 10000, category: 'Freelance', description: 'Project work', date: new Date(2025, 10, 15) },
+    { id: '1', type: 'EXPENSE', amount: 5000, category: 'Food & Dining', description: 'Groceries', date: new Date(2025, 10, 5) },
+    { id: '2', type: 'EXPENSE', amount: 2000, category: 'Transportation', description: 'Fuel', date: new Date(2025, 10, 8) },
+    { id: '3', type: 'EXPENSE', amount: 3500, category: 'Shopping', description: 'Clothing', date: new Date(2025, 10, 10) },
+    { id: '4', type: 'EXPENSE', amount: 1500, category: 'Entertainment', description: 'Movies & Dining', date: new Date(2025, 10, 12) },
+    { id: '5', type: 'EXPENSE', amount: 4000, category: 'Bills & Utilities', description: 'Electricity & Internet', date: new Date(2025, 10, 1) },
+    { id: '6', type: 'EXPENSE', amount: 2500, category: 'Healthcare', description: 'Medical checkup', date: new Date(2025, 10, 7) },
+    { id: '7', type: 'INCOME', amount: 50000, category: 'Salary', description: 'Monthly salary', date: new Date(2025, 10, 1) },
+    { id: '8', type: 'INCOME', amount: 10000, category: 'Freelance', description: 'Project work', date: new Date(2025, 10, 15) },
     
     // Last month
-    { id: '9', type: 'expense', amount: 4500, category: 'Food & Dining', description: 'Groceries', date: new Date(2025, 9, 5) },
-    { id: '10', type: 'expense', amount: 1800, category: 'Transportation', description: 'Fuel', date: new Date(2025, 9, 8) },
-    { id: '11', type: 'expense', amount: 2000, category: 'Shopping', description: 'Electronics', date: new Date(2025, 9, 10) },
-    { id: '12', type: 'income', amount: 50000, category: 'Salary', description: 'Monthly salary', date: new Date(2025, 9, 1) },
+    { id: '9', type: 'EXPENSE', amount: 4500, category: 'Food & Dining', description: 'Groceries', date: new Date(2025, 9, 5) },
+    { id: '10', type: 'EXPENSE', amount: 1800, category: 'Transportation', description: 'Fuel', date: new Date(2025, 9, 8) },
+    { id: '11', type: 'EXPENSE', amount: 2000, category: 'Shopping', description: 'Electronics', date: new Date(2025, 9, 10) },
+    { id: '12', type: 'INCOME', amount: 50000, category: 'Salary', description: 'Monthly salary', date: new Date(2025, 9, 1) },
   ];
   
   const budgets: Budget[] = [

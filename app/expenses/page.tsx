@@ -1,30 +1,51 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
-import { Plus, TrendingUp, TrendingDown, Search, Filter } from 'lucide-react';
-import { generateSampleData, formatCurrency, groupByCategory, CATEGORY_COLORS } from '@/lib/utils';
+import { Plus, TrendingUp, TrendingDown, Search, Filter, Trash2 } from 'lucide-react';
+import { formatCurrency, groupByCategory, CATEGORY_COLORS } from '@/lib/utils';
 import { EXPENSE_CATEGORIES, INCOME_CATEGORIES, Transaction } from '@/lib/types';
 import { format } from 'date-fns';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 
 export default function ExpensesPage() {
-  const [data] = useState(() => generateSampleData());
+  const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [loading, setLoading] = useState(true);
   const [showAddForm, setShowAddForm] = useState(false);
-  const [filterType, setFilterType] = useState<'all' | 'income' | 'expense'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'INCOME' | 'EXPENSE'>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
-    type: 'expense' as 'income' | 'expense',
+    type: 'EXPENSE' as 'INCOME' | 'EXPENSE',
     amount: '',
     category: '',
     description: '',
     date: format(new Date(), 'yyyy-MM-dd')
   });
   
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
+  const fetchTransactions = async () => {
+    try {
+      setLoading(true);
+      const res = await fetch('/api/transactions');
+      if (res.ok) {
+        const data = await res.json();
+        setTransactions(data.transactions || []);
+      }
+    } catch (error) {
+      console.error('Failed to fetch transactions:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+  
   const filteredTransactions = useMemo(() => {
-    let filtered = data.transactions;
+    let filtered = transactions;
     
     if (filterType !== 'all') {
       filtered = filtered.filter(t => t.type === filterType);
@@ -38,29 +59,81 @@ export default function ExpensesPage() {
     }
     
     return filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [data.transactions, filterType, searchQuery]);
+  }, [transactions, filterType, searchQuery]);
   
   const expenseData = useMemo(() => 
-    groupByCategory(filteredTransactions.filter(t => t.type === 'expense')),
+    groupByCategory(filteredTransactions.filter(t => t.type === 'EXPENSE')),
     [filteredTransactions]
   );
   
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // In a real app, this would save to a database
-    console.log('Form submitted:', formData);
-    setShowAddForm(false);
-    setFormData({
-      type: 'expense',
-      amount: '',
-      category: '',
-      description: '',
-      date: format(new Date(), 'yyyy-MM-dd')
-    });
+    setSubmitting(true);
+    
+    try {
+      const res = await fetch('/api/transactions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: formData.type,
+          amount: parseFloat(formData.amount),
+          category: formData.category,
+          description: formData.description,
+          date: new Date(formData.date).toISOString()
+        })
+      });
+      
+      if (res.ok) {
+        await fetchTransactions();
+        setShowAddForm(false);
+        setFormData({
+          type: 'EXPENSE',
+          amount: '',
+          category: '',
+          description: '',
+          date: format(new Date(), 'yyyy-MM-dd')
+        });
+      } else {
+        const error = await res.json();
+        alert(error.error || 'Failed to add transaction');
+      }
+    } catch (error) {
+      console.error('Failed to add transaction:', error);
+      alert('Failed to add transaction');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this transaction?')) return;
+    
+    try {
+      const res = await fetch(`/api/transactions?id=${id}`, {
+        method: 'DELETE'
+      });
+      
+      if (res.ok) {
+        await fetchTransactions();
+      } else {
+        alert('Failed to delete transaction');
+      }
+    } catch (error) {
+      console.error('Failed to delete transaction:', error);
+      alert('Failed to delete transaction');
+    }
   };
   
-  const categories = formData.type === 'expense' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
+  const categories = formData.type === 'EXPENSE' ? EXPENSE_CATEGORIES : INCOME_CATEGORIES;
   
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-zinc-600 dark:text-zinc-400">Loading transactions...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <div className="flex items-center justify-between mb-8">
@@ -90,8 +163,8 @@ export default function ExpensesPage() {
                 <div className="flex gap-2">
                   <Button
                     type="button"
-                    variant={formData.type === 'expense' ? 'primary' : 'outline'}
-                    onClick={() => setFormData({ ...formData, type: 'expense', category: '' })}
+                    variant={formData.type === 'EXPENSE' ? 'primary' : 'outline'}
+                    onClick={() => setFormData({ ...formData, type: 'EXPENSE', category: '' })}
                     className="flex-1"
                   >
                     <TrendingDown size={18} className="mr-2" />
@@ -99,8 +172,8 @@ export default function ExpensesPage() {
                   </Button>
                   <Button
                     type="button"
-                    variant={formData.type === 'income' ? 'primary' : 'outline'}
-                    onClick={() => setFormData({ ...formData, type: 'income', category: '' })}
+                    variant={formData.type === 'INCOME' ? 'primary' : 'outline'}
+                    onClick={() => setFormData({ ...formData, type: 'INCOME', category: '' })}
                     className="flex-1"
                   >
                     <TrendingUp size={18} className="mr-2" />
@@ -156,14 +229,15 @@ export default function ExpensesPage() {
             />
             
             <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1">
-                Add Transaction
+              <Button type="submit" className="flex-1" disabled={submitting}>
+                {submitting ? 'Adding...' : 'Add Transaction'}
               </Button>
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => setShowAddForm(false)}
                 className="flex-1"
+                disabled={submitting}
               >
                 Cancel
               </Button>
@@ -235,16 +309,16 @@ export default function ExpensesPage() {
                 All
               </Button>
               <Button
-                variant={filterType === 'income' ? 'primary' : 'outline'}
+                variant={filterType === 'INCOME' ? 'primary' : 'outline'}
                 size="sm"
-                onClick={() => setFilterType('income')}
+                onClick={() => setFilterType('INCOME')}
               >
                 Income
               </Button>
               <Button
-                variant={filterType === 'expense' ? 'primary' : 'outline'}
+                variant={filterType === 'EXPENSE' ? 'primary' : 'outline'}
                 size="sm"
-                onClick={() => setFilterType('expense')}
+                onClick={() => setFilterType('EXPENSE')}
               >
                 Expenses
               </Button>
@@ -257,14 +331,14 @@ export default function ExpensesPage() {
               filteredTransactions.map(transaction => (
                 <div 
                   key={transaction.id}
-                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors"
+                  className="flex items-center justify-between p-4 bg-zinc-50 dark:bg-zinc-800 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors group"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-1">
                     <div 
                       className="w-2 h-2 rounded-full"
                       style={{ backgroundColor: CATEGORY_COLORS[transaction.category] }}
                     />
-                    <div>
+                    <div className="flex-1">
                       <p className="font-medium text-zinc-900 dark:text-zinc-100">
                         {transaction.description}
                       </p>
@@ -273,14 +347,23 @@ export default function ExpensesPage() {
                       </p>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className={`font-semibold ${
-                      transaction.type === 'income'
-                        ? 'text-green-600 dark:text-green-400'
-                        : 'text-red-600 dark:text-red-400'
-                    }`}>
-                      {transaction.type === 'income' ? '+' : '-'}{formatCurrency(transaction.amount)}
-                    </p>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <p className={`font-semibold ${
+                        transaction.type === 'INCOME'
+                          ? 'text-green-600 dark:text-green-400'
+                          : 'text-red-600 dark:text-red-400'
+                      }`}>
+                        {transaction.type === 'INCOME' ? '+' : '-'}{formatCurrency(transaction.amount)}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDelete(transaction.id)}
+                      className="opacity-0 group-hover:opacity-100 transition-opacity p-2 hover:bg-red-100 dark:hover:bg-red-900/30 rounded-lg"
+                      title="Delete transaction"
+                    >
+                      <Trash2 size={16} className="text-red-600 dark:text-red-400" />
+                    </button>
                   </div>
                 </div>
               ))
