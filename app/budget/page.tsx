@@ -1,49 +1,127 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import Card from '@/components/Card';
 import Button from '@/components/Button';
 import Input from '@/components/Input';
 import { PiggyBank, Plus, Edit2, Trash2, AlertCircle } from 'lucide-react';
-import { 
-  generateSampleData, 
-  formatCurrency,
-  calculateBudgetUtilization,
-  filterTransactionsByMonth
-} from '@/lib/utils';
+import { formatCurrency } from '@/lib/utils';
 import { EXPENSE_CATEGORIES } from '@/lib/types';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 
+interface Budget {
+  id: string;
+  category: string;
+  limit: number;
+  spent: number;
+  period: string;
+}
+
 export default function BudgetPage() {
-  const [data] = useState(() => generateSampleData());
+  const [budgets, setBudgets] = useState<Budget[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showAddForm, setShowAddForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [formData, setFormData] = useState({
     category: '',
     limit: '',
+    period: 'MONTHLY',
   });
-  
-  const currentMonthTransactions = useMemo(() => 
-    filterTransactionsByMonth(data.transactions, new Date()),
-    [data.transactions]
-  );
-  
-  const budgets = useMemo(() => 
-    calculateBudgetUtilization(data.budgets, currentMonthTransactions),
-    [data.budgets, currentMonthTransactions]
-  );
+
+  // Fetch budgets from API
+  useEffect(() => {
+    fetchBudgets();
+  }, []);
+
+  const fetchBudgets = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await fetch('/api/budgets');
+      
+      if (!response.ok) {
+        if (response.status === 401) {
+          window.location.href = '/login';
+          return;
+        }
+        throw new Error('Failed to fetch budgets');
+      }
+
+      const data = await response.json();
+      setBudgets(data.budgets || []);
+    } catch (err) {
+      console.error('Error fetching budgets:', err);
+      setError('Failed to load budgets. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/budgets', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          category: formData.category,
+          limit: parseFloat(formData.limit),
+          period: formData.period,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create budget');
+      }
+
+      // Refresh budgets
+      await fetchBudgets();
+      
+      // Reset form
+      setShowAddForm(false);
+      setFormData({ category: '', limit: '', period: 'MONTHLY' });
+    } catch (err: any) {
+      console.error('Error creating budget:', err);
+      setError(err.message || 'Failed to create budget. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleDelete = async (budgetId: string) => {
+    if (!confirm('Are you sure you want to delete this budget?')) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/budgets?id=${budgetId}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to delete budget');
+      }
+
+      // Refresh budgets
+      await fetchBudgets();
+    } catch (err) {
+      console.error('Error deleting budget:', err);
+      setError('Failed to delete budget. Please try again.');
+    }
+  };
   
   const totalBudget = budgets.reduce((sum, b) => sum + b.limit, 0);
   const totalSpent = budgets.reduce((sum, b) => sum + b.spent, 0);
   const remainingBudget = totalBudget - totalSpent;
-  const utilizationPercentage = (totalSpent / totalBudget) * 100;
-  
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would save to a database
-    console.log('Budget submitted:', formData);
-    setShowAddForm(false);
-    setFormData({ category: '', limit: '' });
-  };
+  const utilizationPercentage = totalBudget > 0 ? (totalSpent / totalBudget) * 100 : 0;
   
   const getBarColor = (spent: number, limit: number) => {
     const percentage = (spent / limit) * 100;
@@ -51,6 +129,16 @@ export default function BudgetPage() {
     if (percentage >= 80) return '#f59e0b';
     return '#3b82f6';
   };
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex items-center justify-center h-64">
+          <p className="text-zinc-600 dark:text-zinc-400">Loading budgets...</p>
+        </div>
+      </div>
+    );
+  }
   
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -71,12 +159,19 @@ export default function BudgetPage() {
           Add Budget
         </Button>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+          <p className="text-red-600 dark:text-red-400">{error}</p>
+        </div>
+      )}
       
       {/* Add Budget Form */}
       {showAddForm && (
         <Card className="mb-8">
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Category
@@ -86,6 +181,7 @@ export default function BudgetPage() {
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   required
+                  disabled={submitting}
                 >
                   <option value="">Select category</option>
                   {EXPENSE_CATEGORIES.map(cat => (
@@ -98,21 +194,42 @@ export default function BudgetPage() {
                 type="number"
                 label="Monthly Limit (₹)"
                 placeholder="0.00"
+                step="0.01"
+                min="0"
                 value={formData.limit}
                 onChange={(e) => setFormData({ ...formData, limit: e.target.value })}
                 required
+                disabled={submitting}
               />
+
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Period
+                </label>
+                <select
+                  className="w-full px-4 py-2 rounded-lg border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  value={formData.period}
+                  onChange={(e) => setFormData({ ...formData, period: e.target.value })}
+                  required
+                  disabled={submitting}
+                >
+                  <option value="WEEKLY">Weekly</option>
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="YEARLY">Yearly</option>
+                </select>
+              </div>
             </div>
             
             <div className="flex gap-3 pt-4">
-              <Button type="submit" className="flex-1">
-                Add Budget
+              <Button type="submit" className="flex-1" disabled={submitting}>
+                {submitting ? 'Creating...' : 'Add Budget'}
               </Button>
               <Button 
                 type="button" 
                 variant="outline" 
                 onClick={() => setShowAddForm(false)}
                 className="flex-1"
+                disabled={submitting}
               >
                 Cancel
               </Button>
@@ -153,9 +270,30 @@ export default function BudgetPage() {
           </p>
         </Card>
       </div>
+
+      {/* No Budgets Message */}
+      {budgets.length === 0 && (
+        <Card>
+          <div className="text-center py-12">
+            <PiggyBank className="mx-auto text-zinc-400 dark:text-zinc-600 mb-4" size={64} />
+            <h3 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100 mb-2">
+              No budgets yet
+            </h3>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-6">
+              Create your first budget to start tracking your spending limits
+            </p>
+            <Button onClick={() => setShowAddForm(true)}>
+              <Plus size={20} className="mr-2" />
+              Create Budget
+            </Button>
+          </div>
+        </Card>
+      )}
       
       {/* Budget Visualization */}
-      <Card title="Budget Overview" subtitle="Spending vs. Limits" className="mb-8">
+      {budgets.length > 0 && (
+        <>
+          <Card title="Budget Overview" subtitle="Spending vs. Limits" className="mb-8">
         <ResponsiveContainer width="100%" height={400}>
           <BarChart data={budgets} layout="horizontal">
             <CartesianGrid strokeDasharray="3 3" />
@@ -198,13 +336,15 @@ export default function BudgetPage() {
                     </h3>
                     <p className="text-sm text-zinc-600 dark:text-zinc-400">
                       {formatCurrency(budget.spent)} of {formatCurrency(budget.limit)}
+                      <span className="ml-2 text-xs">({budget.period})</span>
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Button variant="ghost" size="sm">
-                      <Edit2 size={16} />
-                    </Button>
-                    <Button variant="ghost" size="sm">
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleDelete(budget.id)}
+                    >
                       <Trash2 size={16} />
                     </Button>
                   </div>
@@ -261,6 +401,8 @@ export default function BudgetPage() {
           })}
         </div>
       </Card>
+        </>
+      )}
     </div>
   );
 }
