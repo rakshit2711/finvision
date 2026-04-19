@@ -74,9 +74,61 @@ interface AIInsightsResponse {
   savingsOpportunities: string[];
 }
 
+// Prediction API types
+interface MonthlyPrediction {
+  month: string;
+  predicted_income?: number;
+  predicted_expenditure?: number;
+  linear_prediction?: number;
+  rf_prediction?: number;
+  confidence_interval?: {
+    lower: number;
+    upper: number;
+  };
+  amount?: number;
+}
+
+interface CategoryExpenditurePrediction {
+  predictions: MonthlyPrediction[];
+  historical_average: number;
+  predicted_average: number;
+  total_predicted: number;
+  trend: string;
+}
+
+interface IncomePrediction {
+  predictions: MonthlyPrediction[];
+  historical_average: number;
+  predicted_average: number;
+  growth_trend: number;
+  total_predicted_income: number;
+  confidence_score: number;
+  insights: string[];
+  sample_data_used: boolean;
+}
+
+interface ExpenditurePrediction {
+  category_predictions?: {
+    [key: string]: CategoryExpenditurePrediction;
+  };
+  overall_predictions: {
+    month: string;
+    total_expenditure: number;
+  }[];
+  historical_average_total: number;
+  predicted_average_total: number;
+  total_predicted_expenditure: number;
+  insights: string[];
+  confidence_score: number;
+  sample_data_used: boolean;
+}
+
 export default function InsightsPage() {
   const [aiInsights, setAiInsights] = useState<AIInsightsResponse | null>(null);
+  const [incomePrediction, setIncomePrediction] = useState<IncomePrediction | null>(null);
+  const [expenditurePrediction, setExpenditurePrediction] = useState<ExpenditurePrediction | null>(null);
   const [loading, setLoading] = useState(true);
+  const [predictionsLoading, setPredictionsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   
@@ -126,6 +178,57 @@ export default function InsightsPage() {
     }
     
     fetchInsights();
+  }, [userId]);
+
+  // Fetch income and expenditure predictions
+  useEffect(() => {
+    async function fetchPredictions() {
+      if (!userId) return;
+      
+      try {
+        setPredictionsLoading(true);
+        const aiServiceUrl = process.env.NEXT_PUBLIC_AI_SERVICE_URL || 'http://localhost:8000';
+        
+        // Fetch both predictions in parallel
+        const [incomeRes, expenditureRes] = await Promise.all([
+          fetch(`${aiServiceUrl}/api/v1/predictions/income`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              userId: userId,
+              forecast_months: 3,
+              use_sample_data: true
+            })
+          }),
+          fetch(`${aiServiceUrl}/api/v1/predictions/expenditure`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              userId: userId,
+              forecast_months: 3,
+              by_category: true,
+              use_sample_data: true
+            })
+          })
+        ]);
+        
+        if (incomeRes.ok) {
+          const incomeData = await incomeRes.json();
+          setIncomePrediction(incomeData);
+        }
+        
+        if (expenditureRes.ok) {
+          const expenditureData = await expenditureRes.json();
+          setExpenditurePrediction(expenditureData);
+        }
+      } catch (err) {
+        console.error('Error fetching predictions:', err);
+      } finally {
+        setPredictionsLoading(false);
+      }
+    }
+    
+    fetchPredictions();
   }, [userId]);
   
   // Convert AI insights to display format
@@ -279,6 +382,200 @@ export default function InsightsPage() {
         </p>
       </div>
       
+      {/* AI Predictions Section */}
+      {(incomePrediction || expenditurePrediction) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+          {/* Income Prediction Card */}
+          {incomePrediction && (
+            <Card 
+              title="Income Prediction" 
+              subtitle={`Next ${incomePrediction.predictions.length} months forecast • ${(incomePrediction.confidence_score * 100).toFixed(0)}% confidence`}
+              className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/10 dark:to-emerald-900/10"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">Historical Average</p>
+                    <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                      {formatCurrency(incomePrediction.historical_average)}
+                    </p>
+                  </div>
+                  <TrendingUp className={`${
+                    incomePrediction.growth_trend > 0 ? 'text-green-600 dark:text-green-400' :
+                    incomePrediction.growth_trend < 0 ? 'text-red-600 dark:text-red-400' :
+                    'text-zinc-600 dark:text-zinc-400'
+                  }`} size={32} />
+                </div>
+                
+                <div className="pt-4 border-t border-green-200 dark:border-green-800">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">Predicted Average</p>
+                  <p className="text-3xl font-bold text-green-600 dark:text-green-400">
+                    {formatCurrency(incomePrediction.predicted_average)}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Total Predicted: {formatCurrency(incomePrediction.total_predicted_income)}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Growth Trend: {incomePrediction.growth_trend > 0 ? '+' : ''}{incomePrediction.growth_trend.toFixed(1)}%
+                  </p>
+                </div>
+
+                {incomePrediction.insights.length > 0 && (
+                  <div className="pt-4 border-t border-green-200 dark:border-green-800">
+                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Insights:</p>
+                    <ul className="space-y-2">
+                      {incomePrediction.insights.map((insight, idx) => (
+                        <li key={idx} className="text-sm text-zinc-600 dark:text-zinc-400 flex items-start gap-2">
+                          <span className="text-green-600 dark:text-green-400">•</span>
+                          <span>{insight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          {/* Expenditure Prediction Card */}
+          {expenditurePrediction && (
+            <Card 
+              title="Expenditure Prediction" 
+              subtitle={`Next ${expenditurePrediction.overall_predictions.length} months forecast • ${(expenditurePrediction.confidence_score * 100).toFixed(0)}% confidence`}
+              className="border-l-4 border-l-red-500 bg-gradient-to-br from-red-50 to-rose-50 dark:from-red-900/10 dark:to-rose-900/10"
+            >
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">Historical Average</p>
+                    <p className="text-xl font-bold text-zinc-900 dark:text-zinc-100">
+                      {formatCurrency(expenditurePrediction.historical_average_total)}
+                    </p>
+                  </div>
+                  <TrendingDown className="text-red-600 dark:text-red-400" size={32} />
+                </div>
+                
+                <div className="pt-4 border-t border-red-200 dark:border-red-800">
+                  <p className="text-sm text-zinc-600 dark:text-zinc-400 mb-1">Predicted Average</p>
+                  <p className="text-3xl font-bold text-red-600 dark:text-red-400">
+                    {formatCurrency(expenditurePrediction.predicted_average_total)}
+                  </p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                    Total Predicted: {formatCurrency(expenditurePrediction.total_predicted_expenditure)}
+                  </p>
+                </div>
+
+                {expenditurePrediction.insights.length > 0 && (
+                  <div className="pt-4 border-t border-red-200 dark:border-red-800">
+                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-2">Insights:</p>
+                    <ul className="space-y-2">
+                      {expenditurePrediction.insights.map((insight, idx) => (
+                        <li key={idx} className="text-sm text-zinc-600 dark:text-zinc-400 flex items-start gap-2">
+                          <span className="text-red-600 dark:text-red-400">•</span>
+                          <span>{insight}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* Category-wise Expenditure Predictions */}
+      {expenditurePrediction && expenditurePrediction.category_predictions && Object.keys(expenditurePrediction.category_predictions).length > 0 && (
+        <Card 
+          title="Category-wise Predictions" 
+          subtitle="Expenditure forecast by category"
+          className="mb-8"
+        >
+          <div className="space-y-3">
+            {Object.entries(expenditurePrediction.category_predictions).map(([category, catPred]) => (
+              <div 
+                key={category}
+                className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-800 rounded-lg"
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <span className="font-medium text-zinc-900 dark:text-zinc-100 capitalize min-w-[120px]">
+                    {category}
+                  </span>
+                  <div className="flex items-center gap-2">
+                    {catPred.trend === 'increasing' ? (
+                      <TrendingUp className="text-red-600 dark:text-red-400" size={16} />
+                    ) : catPred.trend === 'decreasing' ? (
+                      <TrendingDown className="text-green-600 dark:text-green-400" size={16} />
+                    ) : (
+                      <div className="w-4 h-0.5 bg-zinc-400" />
+                    )}
+                    <span className={`text-sm font-medium capitalize ${
+                      catPred.trend === 'increasing' ? 'text-red-600 dark:text-red-400' :
+                      catPred.trend === 'decreasing' ? 'text-green-600 dark:text-green-400' :
+                      'text-zinc-600 dark:text-zinc-400'
+                    }`}>
+                      {catPred.trend}
+                    </span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                    Avg: {formatCurrency(catPred.historical_average)}
+                  </p>
+                  <p className="font-semibold text-zinc-900 dark:text-zinc-100">
+                    Predicted: {formatCurrency(catPred.total_predicted)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* 3-Month Forecast Chart */}
+      {(incomePrediction || expenditurePrediction) && (
+        <Card 
+          title="Multi-Month Forecast" 
+          subtitle="Income vs Expenditure predictions"
+          className="mb-8"
+        >
+          <ResponsiveContainer width="100%" height={300}>
+            <LineChart>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis 
+                dataKey="month" 
+                type="category"
+                allowDuplicatedCategory={false}
+              />
+              <YAxis />
+              <Tooltip formatter={(value: number) => formatCurrency(value)} />
+              {incomePrediction && (
+                <Line 
+                  data={incomePrediction.predictions}
+                  type="monotone" 
+                  dataKey="predicted_income" 
+                  stroke="#10b981" 
+                  strokeWidth={3}
+                  dot={{ fill: '#10b981', r: 6 }}
+                  name="Predicted Income"
+                />
+              )}
+              {expenditurePrediction && (
+                <Line 
+                  data={expenditurePrediction.overall_predictions}
+                  type="monotone" 
+                  dataKey="total_expenditure" 
+                  stroke="#ef4444" 
+                  strokeWidth={3}
+                  dot={{ fill: '#ef4444', r: 6 }}
+                  name="Predicted Expenditure"
+                />
+              )}
+            </LineChart>
+          </ResponsiveContainer>
+        </Card>
+      )}
+
       {/* Income vs Expense Comparison */}
       <Card 
         title="Income vs Expense" 
